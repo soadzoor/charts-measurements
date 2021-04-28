@@ -1,81 +1,123 @@
-import {Chart, registerables, UpdateModeEnum} from "chart.js";
+import ApexCharts from "apexcharts";
 import {DateUtils} from "utils/DateUtils";
+
+interface ISeries
+{
+	name: string;
+	data: number[];
+}
 
 export class ChartManager
 {
-	private _container: HTMLElement = document.getElementById("playGround");
-	private _canvas: HTMLCanvasElement = document.createElement("canvas");
-	private _ctx: CanvasRenderingContext2D = this._canvas.getContext("2d");
-	private _chart: Chart;
+	private _container: HTMLElement = document.getElementById("chart");
+	private _chart: ApexCharts;
+
+	private _timeStamps: string[] = [];
+
+	private _electricSeries: ISeries = {
+		name: "Electric Consumption (W)",
+		data: []
+	};
+
+	private _gasSeries: ISeries = {
+		name: "Gas Consumption (m³ / h)",
+		data: []
+	};
 
 	constructor()
 	{
-		Chart.register(...registerables);
-
-		this._container.appendChild(this._canvas);
-
 		const firstValue = this.getNextValues();
 
-		this._chart = new Chart(
-			this._ctx,
-			{
-				type: "line",
-				data: {
-					labels: [firstValue.timeStamp],
-					datasets: [
-						{
-							data: [firstValue.electric],
-							label: "Electric Energy Consumption (W)",
-							borderColor: "rgba(0, 0, 220, 1)",
-							backgroundColor: "rgba(0, 0, 220, 0.2)",
-							fill: false,
-						},
-						{
-							data: [firstValue.gas],
-							label: "Gas Consumption (m³)",
-							borderColor: "rgba(220, 220, 0, 1)",
-							backgroundColor: "rgba(220, 220, 0, 0.2)",
-							fill: false
-						}
-					]
-				}
-			}
+		this._timeStamps.push(firstValue.timeStamp);
+		this._electricSeries.data.push(firstValue.electric);
+		this._gasSeries.data.push(firstValue.gas);
+
+		this._chart = new ApexCharts(
+			this._container,
+			this.chartOptions
 		);
+
+		this._chart.render();
 
 		setInterval(() =>
 		{
 			const nextValues = this.getNextValues();
-			this._chart.data.labels.push(nextValues.timeStamp);
+			this._timeStamps.push(nextValues.timeStamp);
 
-			const electricData = this.getData("electric");
-			const gasData = this.getData("gas");
-			electricData.push(electricData[electricData.length - 1] as number + nextValues.electric / 50 * Math.sign(Math.random() < 0.5 ? -1 : 1));
-			gasData.push(gasData[gasData.length - 1] as number + nextValues.gas / 50 * Math.sign(Math.random() < 0.5 ? -1 : 1));
-			this._chart.update();
-		}, 1000);
+			const multiplicatorE = 1 / 500 * Math.sign(Math.random() < 0.5 ? -1 : 1);
+			const multiplicatorG = 1 / 500 * Math.sign(Math.random() < 0.5 ? -1 : 1);
+			this._electricSeries.data.push(this._electricSeries.data[this._electricSeries.data.length - 1] + nextValues.electric * multiplicatorE);
+			this._gasSeries.data.push(this._gasSeries.data[this._gasSeries.data.length - 1] + nextValues.gas * multiplicatorG);
+
+			const dataLimit = 10;
+
+			if (this._timeStamps.length > dataLimit)
+			{
+				this._timeStamps.shift();
+			}
+
+			if (this._electricSeries.data.length > dataLimit)
+			{
+				this._electricSeries.data.shift();
+			}
+
+			if (this._gasSeries.data.length > dataLimit)
+			{
+				this._gasSeries.data.shift();
+			}
+
+			this._chart.updateSeries([this._electricSeries, this._gasSeries]);
+
+		}, 16);
 	}
 
-	private getData(type: "electric" | "gas")
+	private get chartOptions()
 	{
-		let index = 0;
-
-		switch (type)
-		{
-			case "electric":
-				index = 0;
-				break;
-			case "gas":
-				index = 1;
-				break;
-		}
-		
-		return this._chart.data.datasets[index].data;
+		return {
+			chart: {
+				type: "line",
+				height: "100%",
+				animations: {
+					enabled: false,
+					// easing: "linear",
+					// dynamicAnimation: {
+					// 	speed: 1000
+					// }
+				},
+				toolbar: {
+					show: false
+				},
+				zoom: {
+					enabled: false
+				}
+			},
+			stroke: {
+				curve: "smooth",
+			},
+			dataLabels: {
+				enabled: false
+			},
+			colors: [
+				"#0000FE",
+				"#FEFE00"
+			],
+			series: [
+				this._electricSeries,
+				this._gasSeries
+			],
+			xaxis: {
+				categories: this._timeStamps
+			},
+			yaxis: {
+				decimalsInFloat: 2
+			}
+		};
 	}
 
 	private getNextValues()
 	{
 		return {
-			timeStamp: DateUtils.getHHMM(),
+			timeStamp: DateUtils.getHHMMSS(),
 			electric: Math.random() * 100,
 			gas: Math.random() * 100
 		};
