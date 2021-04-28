@@ -1,123 +1,111 @@
-import ApexCharts from "apexcharts";
-import {DateUtils} from "utils/DateUtils";
+import {Chart, bb, spline} from "billboard.js";
 
 interface ISeries
 {
 	name: string;
+	color: string;
 	data: number[];
 }
 
 export class ChartManager
 {
 	private _container: HTMLElement = document.getElementById("chart");
-	private _chart: ApexCharts;
+	private _chart: Chart;
 
-	private _timeStamps: string[] = [];
+	private readonly _dataLimit: number = 10;
+
+	private _timeStamps: number[] = [];
 
 	private _electricSeries: ISeries = {
 		name: "Electric Consumption (W)",
-		data: []
+		color: "#0000EF",
+		data: new Array(this._dataLimit)
 	};
 
 	private _gasSeries: ISeries = {
 		name: "Gas Consumption (m³ / h)",
-		data: []
+		color: "#EFEF00",
+		data: new Array(this._dataLimit)
 	};
 
 	constructor()
 	{
 		const firstValue = this.getNextValues();
 
-		this._timeStamps.push(firstValue.timeStamp);
-		this._electricSeries.data.push(firstValue.electric);
-		this._gasSeries.data.push(firstValue.gas);
+		for (let i = 0; i < this._dataLimit; ++i)
+		{
+			this._timeStamps.push(firstValue.timeStamp);
+		}
 
-		this._chart = new ApexCharts(
-			this._container,
-			this.chartOptions
+		for (let i = 0; i < this._electricSeries.data.length; ++i)
+		{
+			this._electricSeries.data[i] = firstValue.electric;
+		}
+
+		for (let i = 0; i < this._gasSeries.data.length; ++i)
+		{
+			this._gasSeries.data[i] = firstValue.gas;
+		}
+
+
+		this._chart = bb.generate(
+			{
+				bindto: this._container,
+				data: {
+					x: "x",
+					columns: [
+						["x", ...this._timeStamps],
+						[this._electricSeries.name, ...this._electricSeries.data],
+						[this._gasSeries.name, ...this._gasSeries.data]
+					],
+					colors: {
+						[this._electricSeries.name]: this._electricSeries.color,
+						[this._gasSeries.name]: this._gasSeries.color
+					},
+					type: spline()
+				},
+				axis: {
+					x: {
+						type: "timeseries",
+						tick: {
+							format: "%H:%M:%S",
+							autorotate: true,
+							culling: false
+						},
+						label: {
+							text: "Time",
+							position: "outer-center",
+						}
+					}
+				}
+			}
 		);
-
-		this._chart.render();
 
 		setInterval(() =>
 		{
 			const nextValues = this.getNextValues();
-			this._timeStamps.push(nextValues.timeStamp);
+			//this._timeStamps.push(nextValues.timeStamp);
 
-			const multiplicatorE = 1 / 500 * Math.sign(Math.random() < 0.5 ? -1 : 1);
-			const multiplicatorG = 1 / 500 * Math.sign(Math.random() < 0.5 ? -1 : 1);
-			this._electricSeries.data.push(this._electricSeries.data[this._electricSeries.data.length - 1] + nextValues.electric * multiplicatorE);
-			this._gasSeries.data.push(this._gasSeries.data[this._gasSeries.data.length - 1] + nextValues.gas * multiplicatorG);
+			const multiplicatorE = 1 / 50 * Math.sign(Math.random() < 0.5 ? -1 : 1);
+			const multiplicatorG = 1 / 50 * Math.sign(Math.random() < 0.5 ? -1 : 1);
+			const newElectricValue = this._electricSeries.data[this._electricSeries.data.length - 1] + nextValues.electric * multiplicatorE;
+			const newGasValue = this._gasSeries.data[this._gasSeries.data.length - 1] + nextValues.gas * multiplicatorG;
 
-			const dataLimit = 10;
+			this._chart.flow({
+				columns: [
+					["x", new Date().getTime()],
+					[this._electricSeries.name, newElectricValue],
+					[this._gasSeries.name, newGasValue]
+				]
+			});
 
-			if (this._timeStamps.length > dataLimit)
-			{
-				this._timeStamps.shift();
-			}
-
-			if (this._electricSeries.data.length > dataLimit)
-			{
-				this._electricSeries.data.shift();
-			}
-
-			if (this._gasSeries.data.length > dataLimit)
-			{
-				this._gasSeries.data.shift();
-			}
-
-			this._chart.updateSeries([this._electricSeries, this._gasSeries]);
-
-		}, 16);
-	}
-
-	private get chartOptions()
-	{
-		return {
-			chart: {
-				type: "line",
-				height: "100%",
-				animations: {
-					enabled: false,
-					// easing: "linear",
-					// dynamicAnimation: {
-					// 	speed: 1000
-					// }
-				},
-				toolbar: {
-					show: false
-				},
-				zoom: {
-					enabled: false
-				}
-			},
-			stroke: {
-				curve: "smooth",
-			},
-			dataLabels: {
-				enabled: false
-			},
-			colors: [
-				"#0000FE",
-				"#FEFE00"
-			],
-			series: [
-				this._electricSeries,
-				this._gasSeries
-			],
-			xaxis: {
-				categories: this._timeStamps
-			},
-			yaxis: {
-				decimalsInFloat: 2
-			}
-		};
+		}, 1000);
 	}
 
 	private getNextValues()
 	{
 		return {
-			timeStamp: DateUtils.getHHMMSS(),
+			timeStamp: new Date().getTime(),
 			electric: Math.random() * 100,
 			gas: Math.random() * 100
 		};

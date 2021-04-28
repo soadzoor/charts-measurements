@@ -18,8 +18,8 @@
   "license": "ISC",
   "dependencies": {
     "@types/node": "15.0.1",
-    "apexcharts": "3.26.1",
-    "esbuild": "0.11.15",
+    "billboard.js": "3.0.3",
+    "esbuild": "0.11.16",
     "shx": "0.3.3",
     "tslib": "2.2.0",
     "typescript": "4.2.4",
