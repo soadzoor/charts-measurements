@@ -67,6 +67,11 @@ export class ChartManager
 					},
 					type: spline()
 				},
+				grid: {
+					y: {
+						show: true
+					}
+				},
 				resize: {
 					auto: true
 				},
