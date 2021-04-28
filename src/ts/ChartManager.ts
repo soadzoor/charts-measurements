@@ -51,6 +51,9 @@ export class ChartManager
 		this._chart = bb.generate(
 			{
 				bindto: this._container,
+				point: {
+					show: false
+				},
 				data: {
 					x: "x",
 					columns: [
@@ -64,13 +67,17 @@ export class ChartManager
 					},
 					type: spline()
 				},
+				resize: {
+					auto: true
+				},
 				axis: {
 					x: {
 						type: "timeseries",
 						tick: {
 							format: "%H:%M:%S",
-							autorotate: true,
-							culling: false
+							//rotate: -10,
+							culling: false,
+							//centered: true,
 						},
 						label: {
 							text: "Time",
