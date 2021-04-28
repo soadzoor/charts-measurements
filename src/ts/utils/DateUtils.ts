@@ -1,14 +1,16 @@
 export class DateUtils
 {
-	public static getHHMM()
+	public static getHHMMSS()
 	{
 		const d = new Date();
 
 		let h = d.getHours();
 		let m = d.getMinutes();
+		let s = d.getSeconds();
 
 		let hh = `${h}`;
 		let mm = `${m}`;
+		let ss = `${s}`;
 
 		if (h < 10)
 		{
@@ -20,6 +22,11 @@ export class DateUtils
 			mm = `0${mm}`;
 		}
 
-		return `${hh}:${mm}`;
+		if (s < 10)
+		{
+			ss = `0${ss}`;
+		}
+
+		return `${hh}:${mm}:${ss}`;
 	}
 }

@@ -1,11 +1,10 @@
-import {Chart, registerables, UpdateModeEnum} from "chart.js";
+import {Chart, registerables} from "chart.js";
 import {DateUtils} from "utils/DateUtils";
 
 export class ChartManager
 {
 	private _container: HTMLElement = document.getElementById("playGround");
 	private _canvas: HTMLCanvasElement = document.createElement("canvas");
-	private _ctx: CanvasRenderingContext2D = this._canvas.getContext("2d");
 	private _chart: Chart;
 
 	constructor()
@@ -17,7 +16,7 @@ export class ChartManager
 		const firstValue = this.getNextValues();
 
 		this._chart = new Chart(
-			this._ctx,
+			this._canvas,
 			{
 				type: "line",
 				data: {
@@ -28,32 +27,58 @@ export class ChartManager
 							label: "Electric Energy Consumption (W)",
 							borderColor: "rgba(0, 0, 220, 1)",
 							backgroundColor: "rgba(0, 0, 220, 0.2)",
-							fill: false,
+							tension: 0.2
 						},
 						{
 							data: [firstValue.gas],
 							label: "Gas Consumption (m³)",
 							borderColor: "rgba(220, 220, 0, 1)",
 							backgroundColor: "rgba(220, 220, 0, 0.2)",
-							fill: false
+							tension: 0.2
 						}
 					]
+				},
+				options: {
+					responsive: true
 				}
 			}
 		);
 
-		setInterval(() =>
-		{
-			const nextValues = this.getNextValues();
-			this._chart.data.labels.push(nextValues.timeStamp);
-
-			const electricData = this.getData("electric");
-			const gasData = this.getData("gas");
-			electricData.push(electricData[electricData.length - 1] as number + nextValues.electric / 50 * Math.sign(Math.random() < 0.5 ? -1 : 1));
-			gasData.push(gasData[gasData.length - 1] as number + nextValues.gas / 50 * Math.sign(Math.random() < 0.5 ? -1 : 1));
-			this._chart.update();
-		}, 1000);
+		this.update();
 	}
+
+	private update = () =>
+	{
+		const nextValues = this.getNextValues();
+		this._chart.data.labels.push(nextValues.timeStamp);
+
+		const electricData = this.getData("electric");
+		const gasData = this.getData("gas");
+		const multiplicatorE = 1 / 500 * Math.sign(Math.random() < 0.5 ? -1 : 1);
+		const multiplicatorG = 1 / 500 * Math.sign(Math.random() < 0.5 ? -1 : 1);
+		electricData.push(electricData[electricData.length - 1] as number + nextValues.electric * multiplicatorE);
+		gasData.push(gasData[gasData.length - 1] as number + nextValues.gas * multiplicatorG);
+
+		const dataLimit = 100;
+
+		if (this._chart.data.labels.length > dataLimit)
+		{
+			this._chart.data.labels.shift();
+		}
+
+		if (electricData.length > dataLimit)
+		{
+			for (const dataset of this._chart.data.datasets)
+			{
+				dataset.data[0] = dataset.data[1];
+				dataset.data.splice(1, 1);
+			}
+		}
+
+		this._chart.update("none");
+
+		setTimeout(this.update, 500);
+	};
 
 	private getData(type: "electric" | "gas")
 	{
@@ -75,7 +100,7 @@ export class ChartManager
 	private getNextValues()
 	{
 		return {
-			timeStamp: DateUtils.getHHMM(),
+			timeStamp: DateUtils.getHHMMSS(),
 			electric: Math.random() * 100,
 			gas: Math.random() * 100
 		};
